@@ -345,6 +345,7 @@ class hanyuu_guestauth_znc(znc.Module):
 
 	def setDJ(self, nick, cmd):
 		if self.isDJ(nick):
+			self.authObj[nick]["killed"] = True
 			djmatch = re.match(r'[.!-]dj\s*(\S+)\s*', cmd, re.I)
 			
 			if djmatch:
@@ -360,7 +361,6 @@ class hanyuu_guestauth_znc(znc.Module):
 				self.setDJ(djn, None)
 			else:
 				self.sendMessage(nick, "You are already set as DJ")
-				self.authObj[nick]["killed"] = True
 		elif self.authObj[nick]["killed"]:
 			self.sendMessage(nick, "You have already been set as DJ once before. Ask in the channel for help if you fucked up.")
 		else:
