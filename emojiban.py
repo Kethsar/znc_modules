@@ -7,6 +7,7 @@ import math
 import random
 import re
 import sys
+import ast
 
 try:
 	import znc
@@ -20,8 +21,28 @@ class bantimer(znc.Timer):
 
 class emojiban(znc.Module):
 	description = "Set a timed ban on a user that uses emoji"
+	warnings = {}
 	RADIO = '#r/a/dio'
 	EXEMPT = ['edzilla', 'eiki', 'fushi'] # bots that are not +o or above
+
+	# I knew attempting emoticons was a bad idea...
+	EMOTE_RE1 = re.compile(r'>?[﹕:;;Xx=8][\^\']?(\(+|\)+|D+|\[+|\]+|p+|d+|/+|\\+|I+|F|c+|\|+)$')
+	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|/+|\\+|I+|c+|\|+)[\^\']?[﹕:;;Xx=8]<?$')
+	EMOTICONS = [
+		'owo',
+		'OwO',
+		'UwU',
+		'uwu',
+		'<_<',
+		'>_>',
+		'T_T',
+		'T.T',
+		'o_o',
+		'O_O',
+	]
+	PREFIX_EXCEPTIONS = [
+		'pokemon'
+	]
 
 	def OnLoad(self, args, message):
 		# https://unicode-table.com/en/blocks/
@@ -37,6 +58,9 @@ class emojiban(znc.Module):
 		emojistr += r'\U0001F170-\U0001FFFD]'
 		self.emoji_re = re.compile(emojistr)
 
+		if 'warnings' in self.nv:
+			self.warnings = ast.literal_eval(self.nv['warnings'])
+
 		return True
 	
 	def OnChanTextMessage(self, message):
@@ -46,13 +70,42 @@ class emojiban(znc.Module):
 				return znc.CONTINUE
 			
 			zncnick = message.GetNick()
-			nick = zncnick.GetNick().lower()
-			if self.isAdmin(zncnick) or nick in self.EXEMPT:
+			nick = zncnick.GetNick()
+			lnick = nick.lower()
+			if self.isAdmin(zncnick) or lnick in self.EXEMPT:
 				return znc.CONTINUE
 
 			lmsg = message.GetText().lower()
 			if self.emoji_re.search(lmsg):
-				self.kickban(nick)
+				self.kickban(lnick, "Fuck off with your emoji (1 - 5 minute ban)")
+				return znc.CONTINUE
+
+			noctrl = re.sub(r'\x03([0-9]+(,[0-9]+)?)?', '', message.GetText())
+			noctrl = re.sub(r'[\x00-\x1F]', '', noctrl)
+			pieces = noctrl.split(' ')
+			for i in range(len(pieces)):
+				piece = pieces[i]
+				if not (piece in self.EMOTICONS
+					or self.EMOTE_RE1.match(piece)
+					or self.EMOTE_RE2.match(piece)):
+					continue
+
+				if i > 0 and piece.lower() == 'xd' and pieces[i-1].lower() in self.PREFIX_EXCEPTIONS:
+					continue
+
+				if lnick in self.warnings and self.warnings[lnick] >= 2:
+					self.kickban(lnick, "Fuck off with your emoticons already (1 - 5 minute ban)")
+				else:
+					self.kick(lnick, "No emoticons")
+					self.PutModule("Kicked {0}".format(nick))
+					if lnick in self.warnings:
+						self.warnings[lnick] += 1
+					else:
+						self.warnings[lnick] = 1
+					
+					self.nv['warnings'] = str(self.warnings)
+
+				break
 
 		except Exception as err:
 			self.PutModule(str(err))
@@ -61,11 +114,30 @@ class emojiban(znc.Module):
 
 	def OnModCommand(self, command):
 		try:
-			self.PutModule("Nothing here")
+			cmd = command.strip().lower()
+			if cmd == 'getwarn':
+				self.PutModule(str(self.warnings))
+				return
+
+			pieces = cmd.split(' ')
+			if len(pieces) < 2 or pieces[0] != 'dewarn':
+				self.PutModule("Commands: getwarn; dewarn <users...>")
+				return
+
+			dewarned = ''
+			for i in range(1, len(pieces)):
+				if pieces[i] in self.warnings:
+					self.warnings.remove(pieces[i])
+					dewarned += pieces[i] + ", "
+
+			dewarned = dewarned.strip(', ')
+			if len(dewarned) > 0:
+				self.nv['warnings'] = str(self.warnings)
+				self.PutModule("Removed {0} from warnings".format(dewarned))
 		except Exception as err:
 			self.PutModule("OnModCommand Exception: " + str(err))
 
-	def kickban(self, user):
+	def kickban(self, user, msg):
 		try:
 			btime = math.floor(random.random() * 5 * 60)
 			if btime < 60:
@@ -73,19 +145,55 @@ class emojiban(znc.Module):
 			
 			timer = self.CreateTimer(bantimer, interval=btime)
 			timer.nick = user
-			msg = "Fuck off with your emoji (1 - 5 minute ban)"
 
 			self.PutIRC("MODE {0} +b {1}!*@*".format(self.RADIO, user))
-			self.PutIRC("KICK {0} {1} :{2}".format(self.RADIO, user, msg))
+			self.kick(user, msg)
 			self.PutModule("Banned {0} for {1} seconds".format(user, btime))
 		except Exception as err:
 			self.PutModule("kickban Exception: " + str(err))
+
+	def kick(self, user, msg):
+		try:
+			self.PutIRC("KICK {0} {1} :{2}".format(self.RADIO, user, msg))
+		except Exception as err:
+			self.PutModule("kick Exception: " + str(err))
 
 	def unban(self, user):
 		try:
 			self.PutIRC("MODE {0} -b {1}!*@*".format(self.RADIO, user))
 		except Exception as err:
 			self.PutModule("unban Exception: " + str(err))
+	
+	def inRadio(self):
+		try:
+			radioChan = self.GetNetwork().FindChan(self.RADIO)
+
+			if radioChan:
+				return True
+			else:
+				return False
+		except Exception as err:
+			self.PutModule("inRadio Exception: " + str(err))
+
+	def sendIfInRadio(self, message):
+		try:
+			if self.inRadio():
+				self.sendMessage(self.RADIO, message)
+		except Exception as err:
+			self.PutModule("sendIfInRadio Exception: " + str(err))
+	
+	def sendMessage(self, ctx, msg):
+		try:
+			user = self.GetUser()
+			nick = self.GetModNick()
+
+			if user:
+				nick = user.GetNick()
+
+			self.PutIRC("PRIVMSG {0} :{1}".format(ctx, msg))
+			self.PutUser(":{0} PRIVMSG {1} :{2}".format(nick, ctx, msg))
+		except Exception as err:
+			self.PutModule("sendMessage Exception: " + str(err))
 
 	def isAdmin(self, zncnick):
 		return (zncnick.HasPerm("@") or 

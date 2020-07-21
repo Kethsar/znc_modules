@@ -473,7 +473,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		if self.inRadio():
 			topic = self.GetNetwork().FindChan(self.RADIO).GetTopic()
 			topic = re.sub("\x03([0-9]{1,2}(,[0-9]{1,2})?)?", "", topic)
-			match = re.search(r'DJ:\s+(\S+)\s+https://r-a-d.io', topic, re.I)
+			match = re.search(r'DJ:\s+(.+)\s{1,2}https://r-a-d.io', topic, re.I)
 
 			if match:
 				curDJ = match.group(1)
