@@ -21,13 +21,12 @@ class bantimer(znc.Timer):
 
 class emojiban(znc.Module):
 	description = "Set a timed ban on a user that uses emoji"
-	warnings = {}
 	RADIO = '#r/a/dio'
 	EXEMPT = ['edzilla', 'eiki', 'fushi'] # bots that are not +o or above
 
 	# I knew attempting emoticons was a bad idea...
-	EMOTE_RE1 = re.compile(r'>?[﹕:;;Xx=8][\^\']?(\(+|\)+|D+|\[+|\]+|p+|d+|/+|\\+|I+|F|c+|\|+)$')
-	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|/+|\\+|I+|c+|\|+)[\^\']?[﹕:;;Xx=8]<?$')
+	EMOTE_RE1 = re.compile(r'>?[꞉∶˸։﹕:;;Xx=][\^\'v＾]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|/+|\\+|F|c+|\|+|>|<|）+|s|S)$')
+	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|/+|\\+|c+|\|+|>|<|）+|s|S)[\^\'v＾]?[꞉∶˸։﹕:;;Xx=]<?$')
 	EMOTICONS = [
 		'owo',
 		'OwO',
@@ -39,6 +38,25 @@ class emojiban(znc.Module):
 		'T.T',
 		'o_o',
 		'O_O',
+		'x_x',
+		'X_X',
+		'>w<',
+		'>_<',
+		'^^,',
+		':v',
+		'v:',
+		':V',
+		'V:',
+		':\\/',
+		'\\/:'
+	]
+	EXCEPTIONS = [
+		'=>',
+		'<=',
+		'>=',
+		'=<',
+		'xp',
+		'dx'
 	]
 	PREFIX_EXCEPTIONS = [
 		'pokemon'
@@ -57,9 +75,6 @@ class emojiban(znc.Module):
 		# 1F170 - 1FFFD: Various meme shit (bold B and other letters in a square thing), actual emoji, and other symbols
 		emojistr += r'\U0001F170-\U0001FFFD]'
 		self.emoji_re = re.compile(emojistr)
-
-		if 'warnings' in self.nv:
-			self.warnings = ast.literal_eval(self.nv['warnings'])
 
 		return True
 	
@@ -90,20 +105,13 @@ class emojiban(znc.Module):
 					or self.EMOTE_RE2.match(piece)):
 					continue
 
+				if piece.lower() in self.EXCEPTIONS:
+					continue
 				if i > 0 and piece.lower() == 'xd' and pieces[i-1].lower() in self.PREFIX_EXCEPTIONS:
 					continue
 
-				if lnick in self.warnings and self.warnings[lnick] >= 2:
-					self.kickban(lnick, "Fuck off with your emoticons already (1 - 5 minute ban)")
-				else:
-					self.kick(lnick, "No emoticons")
-					self.PutModule("Kicked {0}".format(nick))
-					if lnick in self.warnings:
-						self.warnings[lnick] += 1
-					else:
-						self.warnings[lnick] = 1
-					
-					self.nv['warnings'] = str(self.warnings)
+				self.kick(lnick, "No emoticons")
+				self.PutModule("Kicked {0}".format(nick))
 
 				break
 
@@ -112,6 +120,7 @@ class emojiban(znc.Module):
 
 		return znc.CONTINUE
 
+	'''
 	def OnModCommand(self, command):
 		try:
 			cmd = command.strip().lower()
@@ -127,7 +136,7 @@ class emojiban(znc.Module):
 			dewarned = ''
 			for i in range(1, len(pieces)):
 				if pieces[i] in self.warnings:
-					self.warnings.remove(pieces[i])
+					del self.warnings[pieces[i]]
 					dewarned += pieces[i] + ", "
 
 			dewarned = dewarned.strip(', ')
@@ -136,6 +145,7 @@ class emojiban(znc.Module):
 				self.PutModule("Removed {0} from warnings".format(dewarned))
 		except Exception as err:
 			self.PutModule("OnModCommand Exception: " + str(err))
+	'''
 
 	def kickban(self, user, msg):
 		try:

@@ -108,7 +108,7 @@ class hanyuu_guestauth_znc(znc.Module):
 				match = re.match("[.!-]", msgTxt)
 
 				if match:
-					msgTxt = re.sub("[.!-]", "", msgTxt).strip()
+					msgTxt = re.sub("^[.!-]", "", msgTxt).strip()
 					self.checkForAdminCommand(msgTxt, True)
 
 			
