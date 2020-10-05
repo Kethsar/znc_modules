@@ -27,12 +27,14 @@ class hanyuu_guestauth_znc(znc.Module):
 		"threads": 0,
 		"thread": "",
 		"timer": None,
-		"nick": ""
+		"nick": "",
+		"trykill": 0
 	}
 	blacklist = []
 	admins = []
 	authObj = {}
 
+	# Set up some variables from persistent storage
 	def OnLoad(self, args, message):
 		if not 'pass' in self.nv:
 			self.PutModule("Password is missing, please set one using setpass")
@@ -55,6 +57,8 @@ class hanyuu_guestauth_znc(znc.Module):
 
 		return True
 
+	# Commands that can be used in the module query window
+	# TODO: Possibly make this a jump-table or whatever to get rid of the evergrowing if tree
 	def OnModCommand(self, command):
 		try:
 			cmd = command.strip()
@@ -86,6 +90,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		except Exception as err:
 			self.PutModule("OnModCommand Exception: " + str(err))
 		
+	# Check for guest commands when PMd
 	def OnPrivTextMessage(self, message):
 		try:
 			nick = message.GetNick().GetNick().lower()
@@ -98,6 +103,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		
 		return znc.CONTINUE
 
+	# Check for admin commands in messages from #r/a/dio
 	def OnChanTextMessage(self, message):
 		try:
 			chan = str(message.GetChan())
@@ -110,13 +116,13 @@ class hanyuu_guestauth_znc(znc.Module):
 				if match:
 					msgTxt = re.sub("^[.!-]", "", msgTxt).strip()
 					self.checkForAdminCommand(msgTxt, True)
-
 			
 		except Exception as err:
 			self.PutModule("OnChanTextMessage Exception: " + str(err))
 		
 		return znc.CONTINUE
 	
+	# De-auth guests if they part from #r/a/dio
 	def OnPartMessage(self, message):
 		try:
 			nick = message.GetNick().GetNick().lower()
@@ -124,6 +130,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		except Exception as err:
 			self.PutModule("OnPartMessage Exception: " + str(err))
 	
+	# De-auth guests if they disconnect from the IRC server
 	def OnQuitMessage(self, message, vchans):
 		try:
 			nick = message.GetNick().GetNick().lower()
@@ -131,6 +138,8 @@ class hanyuu_guestauth_znc(znc.Module):
 		except Exception as err:
 			self.PutModule("OnQuitMessage Exception: " + str(err))
 
+	# Commands that can be used by +o and higher in #r/a/dio, or by admins set manually
+	# TODO: Possibly make a jump-table or something
 	def checkForAdminCommand(self, cmd, fromChan = False):
 		if re.match('guestauth|guest|auth', cmd, re.I):
 			self.setAuth(cmd, fromChan)
@@ -141,6 +150,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		elif re.match('whitelist(guest)?', cmd, re.I):
 			self.whitelistNick(cmd)
 
+	# Set the guest password
 	def setPass(self, cmd):
 		match = re.match(r'setpass (\S+)', cmd, re.I)
 
@@ -149,12 +159,14 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.nv['pass'] = password
 			self.PutModule("Password set to {0}".format(password))
 	
+	# Get the currently set guest password
 	def getPass(self):
 		if 'pass' in self.nv:
 			self.PutModule("Current password: {0}".format(self.nv['pass']))
 		else:
 			self.PutModule("Password not set.")
 
+	# Set the help page, shown on the last message sent when .help is triggered
 	def setHelp(self, cmd):
 		match = re.match(r'sethelp (\S+)', cmd, re.I)
 
@@ -163,12 +175,14 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.nv['help'] = helpurl
 			self.PutModule("Help URL set to {0}".format(helpurl))
 	
+	# Get the currently set help page
 	def getHelp(self):
 		if 'help' in self.nv:
 			self.PutModule("Current Help URL: {0}".format(self.nv['help']))
 		else:
 			self.PutModule("Help URL not set.")
 
+	# Set the server URL that is meant to be streamed to, including port
 	def setServer(self, cmd):
 		match = re.match(r'setserver (\S+)', cmd, re.I)
 
@@ -177,12 +191,14 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.nv['server'] = server
 			self.PutModule("Server Address set to {0}".format(server))
 	
+	# Get the currently set server address
 	def getServer(self):
 		if 'server' in self.nv:
 			self.PutModule("Current Server Address: {0}".format(self.nv['server']))
 		else:
 			self.PutModule("Server Address not set.")
 	
+	# Get the list of manually set admins that can trigger admin commands
 	def getAdmins(self):
 		if len(self.admins) > 0:
 			adminStr = ""
@@ -194,6 +210,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		else:
 			self.PutModule("No explicit admins.")
 
+	# Add a user to the list of admins that can trigger admin commands
 	def addAdmin(self, cmd):
 		match = re.match(r'addadmin\s+(\S+)', cmd, re.I)
 
@@ -210,6 +227,7 @@ class hanyuu_guestauth_znc(znc.Module):
 				self.nv['admins'] = adminStr.strip("::")
 				self.PutModule("Added {0} as admin".format(nick))
 
+	# Remove a user from the list of admins
 	def delAdmin(self, cmd):
 		match = re.match(r'deladmin\s+(\S+)', cmd, re.I)
 
@@ -226,6 +244,7 @@ class hanyuu_guestauth_znc(znc.Module):
 				self.nv['admins'] = adminStr.strip("::")
 				self.PutModule("Removed {0} as admin".format(nick))
 	
+	# Get the list of users currently disallowed from streaming
 	def getBlacklist(self):
 		if len(self.blacklist) > 0:
 			blstr = ""
@@ -237,6 +256,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		else:
 			self.PutModule("No blacklisted nicks.")
 
+	# Add a user to the blacklist to prevent them from being authorized as a guest
 	def blacklistNick(self, cmd):
 		match = re.match(r'blacklist(?:guest)?\s+([\S\s]+)', cmd, re.I)
 
@@ -257,6 +277,7 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.nv['blacklist'] = blstr.strip("::")
 			self.PutModule("Added {0} to the blacklist".format(nstr))
 
+	# Remove a user from the blacklist and allow them to be authorized as a guest again
 	def whitelistNick(self, cmd):
 		match = re.match(r'whitelist(?:guest)?\s+([\S\s]+)', cmd, re.I)
 
@@ -277,6 +298,7 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.nv['blacklist'] = blstr.strip("::")
 			self.PutModule("Removed {0} from the blacklist".format(nstr))
 
+	# Attempt to authorize a user to guest stream
 	def setAuth(self, cmd, fromChan = False):
 		match = re.match(r'(?:guestauth|guest|auth)\s+([\S\s]+)', cmd, re.I)
 
@@ -302,6 +324,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		else:
 			self.PutModule("Provide a nick that will be allowed to set Hanyuu as DJ")
 
+	# Allows the given nick to use guest commands and stream. Resets the nick first if they are already authorized.
 	def setAllowedNick(self, nick):
 		lnick = nick.lower()
 		if lnick in self.authObj:
@@ -315,6 +338,8 @@ class hanyuu_guestauth_znc(znc.Module):
 		self.sendMessage(nick, "You have been authorized to use Hanyuu within the next 24 hours. PM me .help for information.")
 		self.sendMessage(nick, "The password changes regularly. If you are a veteran guest streamer and just need the password, PM me .getpass to avoid the full help message.")
 
+	# Commands that can be used by guest DJs
+	# TODO: Make this a jump-table or something
 	def checkForUserCommand(self, cmd, nick):
 		if re.match('[.!-]kill', cmd, re.I):
 			self.killHanyuu(nick)
@@ -333,16 +358,23 @@ class hanyuu_guestauth_znc(znc.Module):
 		elif re.match('[.!-]getpass', cmd, re.I):
 			self.showPass(nick)
 
+	# Kills Hanyuu ;_;
+	# Sends the command to have Hanyuu disconnect after she finishes her current song
 	def killHanyuu(self, nick):
 		if self.authObj[nick]["killed"]:
 			self.sendMessage(nick, "You have already used your kill privilege. Ask me to reset it if you fucked up.")
 		elif not re.search('hanyuu', self.getCurrentDJ(), re.I):
 			self.sendMessage(nick, "Hanyuu is not the DJ, so there is no need to kill her. Murderer.")
+		elif self.authObj[nick]["trykill"] > 2: # implies "killed" is false since it was the first check
+			self.sendMessage(nick, "You've made 3 attempts to kill Hanyuu and not become DJ. Are you too drunk for this? Let Kethsar or an admin know about this.")
 		else:
+			self.authObj[nick]["trykill"] += 1
 			self.sendIfInRadio(".kill", nick)
 			self.sendIfInRadio(".thread none", nick)
 			self.sendMessage(nick, "Hanyuu has been killed. Don't forget to connect around 30 seconds left in the song, and to set yourself as DJ with .dj")
 
+	# Set the user as DJ if they are not the currently set DJ
+	# Can only be used by a guest once per authorization
 	def setDJ(self, nick, cmd):
 		if self.isDJ(nick):
 			self.authObj[nick]["killed"] = True
@@ -364,11 +396,16 @@ class hanyuu_guestauth_znc(znc.Module):
 		elif self.authObj[nick]["killed"]:
 			self.sendMessage(nick, "You have already been set as DJ once before. Ask in the channel for help if you fucked up.")
 		else:
+			if re.search('hanyuu', self.getCurrentDJ(), re.I) and self.authObj[nick]["trykill"] < 1:
+				self.sendMessage(nick, "You forgot to kill Hanyuu. I'll kill her for you, but it's usually better to kill her first and set yourself as DJ just before or after you start.")
+				self.killHanyuu(nick)
+			
 			self.sendIfInRadio(".dj guest:" + self.authObj[nick]["nick"], nick)
 			self.authObj[nick]["killed"] = True
 			self.sendMessage(nick, "Don't foget to '.dj <something>' in the channel or PM me '.dj hanyuu' when you are done to give Hanyuu control again.")
 			self.sendMessage(nick, "Alternatively you can set any of the other guests available using '.dj <guestname>' here (NOT IN THE CHANNEL). Type .guests to see who there is.")
 
+	# Display a list of guests that can be set as DJ for the current guest
 	def showGuests(self, nick):
 		nstr = ""
 		for k in self.authObj.keys():
@@ -382,6 +419,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		
 		self.sendMessage(nick, nstr)
 
+	# Display the currently authed guests
 	def listGuests(self):
 		gstr = ""
 		for k in self.authObj.keys():
@@ -390,10 +428,11 @@ class hanyuu_guestauth_znc(znc.Module):
 		if gstr:
 			gstr = "Authed guests: " + gstr.strip(' ,')
 		else:
-			gstr = "No are currently authed"
+			gstr = "No users are currently authed"
 		
 		self.PutModule(gstr)
 
+	# Set the given thread
 	def setThread(self, nick, cmd):
 		if self.isDJ(nick):
 			threadMatch = re.match(r'[.!-]thread\s*(\S+)\s*', cmd, re.I)
@@ -414,6 +453,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		else:
 			self.sendMessage(nick, "You should set yourself as DJ first with .dj")
 
+	# Display the current guest password to the user
 	def getGuestPass(self):
 		password = "<password not set, tell Kethsar he is retarded>"
 		if 'pass' in self.nv:
@@ -421,6 +461,7 @@ class hanyuu_guestauth_znc(znc.Module):
 
 		return password
 
+	# Send a set of help messages to the user
 	def showHelp(self, nick):
 		if not 'server' in self.nv:
 			self.sendMessage(nick, "It seems the server has not been set. Tell Kethsar to get his shit together.")
@@ -437,6 +478,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		if 'help' in self.nv:
 			self.sendMessage(nick, "Commands and other information (recent-ish updates noted on page): {0}".format(self.nv['help']))
 
+	# Set the DJ name a guest will be set to when they are set as DJ
 	def setName(self, nick, cmd):
 		nameMatch = re.match(r'[.!-]setname\s*(.{1,20})', cmd, re.I)
 
@@ -445,19 +487,23 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.authObj[nick]["nick"] = name
 			self.showName(nick)
 
+	# Display the DJ name the user will be set as
 	def showName(self, nick):
 		self.sendMessage(nick, "Your DJ name will be set as {0} when you DJ yourself".format(self.authObj[nick]["nick"]))
 
+	# Display the current guess password to the user
 	def showPass(self, nick):
 		password = self.getGuestPass()
 		self.sendMessage(nick, "The current password is {0}".format(password))
 
-	def resetAuth(self, timer=None):
+	# Reset all guest authorizations
+	def resetAuth(self):
 		akeys = list(self.authObj.keys())
 		
 		for k in akeys:
 			self.deauth(k)
 
+	# De-auth the given user
 	def deauth(self, nick):
 		if nick in self.authObj:
 			if self.authObj[nick]["timer"]:
@@ -466,6 +512,7 @@ class hanyuu_guestauth_znc(znc.Module):
 			del self.authObj[nick]
 			self.PutModule("{0} de-authed".format(nick))
 
+	# Get the DJ currently set from the topic in #r/a/dio
 	def getCurrentDJ(self):
 		curDJ = ''
 		self.PutModule("Checking current DJ")
@@ -480,6 +527,7 @@ class hanyuu_guestauth_znc(znc.Module):
 		
 		return curDJ
 
+	# Check if the given user is set as the DJ
 	def isDJ(self, nick):
 		return re.search('guest:' + self.authObj[nick]["nick"], self.getCurrentDJ(), re.I)
 	
@@ -519,10 +567,12 @@ class hanyuu_guestauth_znc(znc.Module):
 		except Exception as err:
 			self.PutModule("sendMessage Exception: " + str(err))
 
+	# Check if a user has +h or higher in a channel
 	def hasAccess(self, zncnick):
 		return (self.isAdmin(zncnick) or
 				zncnick.HasPerm("%"))
 
+	# Check if a user is +o or higherr in a channel, or is a manually set admin
 	def isAdmin(self, zncnick):
 		return (zncnick.HasPerm("@") or 
 				zncnick.HasPerm("&") or
