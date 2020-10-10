@@ -141,8 +141,12 @@ class hanyuu_guestauth_znc(znc.Module):
 	# Commands that can be used by +o and higher in #r/a/dio, or by admins set manually
 	# TODO: Possibly make a jump-table or something
 	def checkForAdminCommand(self, cmd, fromChan = False):
+		inChan = self.inRadio()
 		if re.match('guestauth|guest|auth', cmd, re.I):
-			self.setAuth(cmd, fromChan)
+			if inChan:
+				self.setAuth(cmd, fromChan)
+			else:
+				self.PutModNotice("Failed to auth user(s): You are not in #r/a/dio")
 		elif re.match('resetauth', cmd, re.I):
 			self.resetAuth()
 		elif re.match('blacklist(guest)?', cmd, re.I):
@@ -301,26 +305,39 @@ class hanyuu_guestauth_znc(znc.Module):
 	# Attempt to authorize a user to guest stream
 	def setAuth(self, cmd, fromChan = False):
 		match = re.match(r'(?:guestauth|guest|auth)\s+([\S\s]+)', cmd, re.I)
+		radioChan = self.GetNetwork().FindChan(self.RADIO) # We already check if we are in the channel before calling this funtion
 
 		if match:
 			nicks = match.group(1).split(" ")
 			nstr = ""
 			blstr = ""
+			chstr = ""
 
 			for n in nicks:
 				if n:
 					if n.lower() not in self.blacklist:
-						nstr += n + ", "
-						self.setAllowedNick(n)
+						if radioChan.FindNick(n):
+							nstr += n + ", "
+							self.setAllowedNick(n)
+						else:
+							chstr += n + ", "
 					else:
 						blstr += n + ", "
 			
 			nstr = nstr.strip(' ,')
 			blstr = blstr.strip(' ,')
-			self.sendMessage(self.RADIO, "{0} is/are authorized to guest DJ. Stick around for a comfy fire.".format(nstr))
+			chstr = chstr.strip(' ,')
+
+			if len(nstr) > 0:
+				self.sendMessage(self.RADIO, "{0} is/are authorized to guest DJ. Stick around for a comfy fire.".format(nstr))
 
 			if fromChan and len(blstr) > 0:
 				self.sendMessage(self.RADIO, "{0} is/are blacklisted and not authorized to guest DJ.".format(blstr))
+				
+			if len(chstr) > 0:
+				if fromChan:
+					self.sendMessage(self.RADIO, "{0} is/are not in the channel and are ineligible for guest auth. Tell them to join the channel.".format(chstr))
+				self.PutModNotice("{0} is/are not in the channel and are ineligible for guest auth".format(chstr))
 		else:
 			self.PutModule("Provide a nick that will be allowed to set Hanyuu as DJ")
 
