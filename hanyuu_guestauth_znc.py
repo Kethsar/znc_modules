@@ -142,7 +142,9 @@ class hanyuu_guestauth_znc(znc.Module):
 	# TODO: Possibly make a jump-table or something
 	def checkForAdminCommand(self, cmd, fromChan = False):
 		inChan = self.inRadio()
-		if re.match('guestauth|guest|auth', cmd, re.I):
+		if re.match('guesthelp', cmd, re.I):
+			self.guestHelp(cmd)
+		elif re.match('guestauth|guest|auth', cmd, re.I):
 			if inChan:
 				self.setAuth(cmd, fromChan)
 			else:
@@ -477,6 +479,15 @@ class hanyuu_guestauth_znc(znc.Module):
 			password = self.nv['pass']
 
 		return password
+
+	# Show help message to a nick without having them authed
+	def guestHelp(self, cmd):
+		match = re.match(r'guesthelp\s+(\S+)', cmd, re.I)
+
+		if match:
+			nick = match.group(1)
+			self.showHelp(nick)
+			self.sendMessage(nick, "You are NOT actually authed yet. These messages were sent to aide with first-time setup.")
 
 	# Send a set of help messages to the user
 	def showHelp(self, nick):
