@@ -499,8 +499,8 @@ class hanyuu_guestauth_znc(znc.Module):
 		server = self.nv['server']
 
 		self.sendMessage(nick, "Connection Info: Address: {0}, mount: main (for loopstream) or main.mp3 (for most everything else), user: guest, pass: {1}".format(server, password))
-		self.sendMessage(nick, "If you are on linux and using SHIT, the connection info goes in the config's <url> tag as http://{0}/main.mp3".format(server))
-		self.sendMessage(nick, "Please do a test connection before streaming if you have not streamed recently. This means connecting WITHOUT killing Hanyuu to make sure you can connect. Music will not go through, don't worry. Disconnect when you feel its okay.")
+		#self.sendMessage(nick, "If you are on linux and using SHIT, the connection info goes in the config's <url> tag as http://{0}/main.mp3".format(server))
+		self.sendMessage(nick, "Please do a test connection before streaming if you have not streamed recently. Do this by setting the mount to 'test' instead of 'main'. Be sure to set it back to 'main' when you are done testing.")
 		self.sendMessage(nick, "When you are finished streaming, PM me '.dj hanyuu', OR type '.dj <whatever>' !!! IN #r/a/dio !!!(<- important) to set Hanyuu as DJ. <whatever> can be literally anything, like dongs, but CANNOT be blank.")
 
 		if 'help' in self.nv:

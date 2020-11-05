@@ -25,8 +25,8 @@ class emojiban(znc.Module):
 	EXEMPT = ['edzilla', 'eiki', 'fushi'] # bots that are not +o or above
 
 	# I knew attempting emoticons was a bad idea...
-	EMOTE_RE1 = re.compile(r'>?[꞉∶˸։﹕:;;Xx=][\^\'v＾-]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|/+|\\+|F|c+|\|+|>|<|）+|s|S)$')
-	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|/+|\\+|c+|\|+|>|<|）+|s|S)[\^\'v＾-]?[꞉∶˸։﹕:;;Xx=]<?$')
+	EMOTE_RE1 = re.compile(r'>?[꞉∶˸։﹕:;;Xx=][\^\'v＾-]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|ԁ+|/+|\\+|F|c+|\|+|>|<|）+|s|S)$')
+	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|ԁ+|/+|\\+|c+|\|+|>|<|）+|s|S)[\^\'v＾-]?[꞉∶˸։﹕:;;Xx=]<?$')
 	EMOTICONS = [
 		'owo',
 		'OwO',
@@ -38,11 +38,23 @@ class emojiban(znc.Module):
 		'T.T',
 		'o_o',
 		'O_O',
+		'o_O',
+		'O_o',
+		'O.O',
+		'o.o',
+		'o.O',
+		'O.o',
 		'x_x',
 		'X_X',
+		'x.x',
+		'X.X',
 		'>w<',
 		'>_<',
+		'>.<',
 		'^^,',
+		'^^;',
+		'^_^',
+		'^.^',
 		':v',
 		'v:',
 		':V',
@@ -58,7 +70,11 @@ class emojiban(znc.Module):
 		'xp',
 		'dx',
 		'Xs',
-		'XF'
+		'XF',
+		'X>',
+		'<X'
+		'x>',
+		'<x'
 	]
 	PREFIX_EXCEPTIONS = [
 		'pokemon'
