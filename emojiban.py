@@ -22,11 +22,11 @@ class bantimer(znc.Timer):
 class emojiban(znc.Module):
 	description = "Set a timed ban on a user that uses emoji"
 	RADIO = '#r/a/dio'
-	EXEMPT = ['edzilla', 'eiki', 'fushi'] # bots that are not +o or above
+	EXEMPT = ['edzilla', 'eiki', 'fushi', "kethbot", "kethzilla", "nisezilla"] # bots that are not +o or above
 
 	# I knew attempting emoticons was a bad idea...
-	EMOTE_RE1 = re.compile(r'>?[꞉∶˸։﹕:;;Xx=][\^\'v＾-]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|ԁ+|/+|\\+|F|c+|\|+|>|<|）+|s|S)$')
-	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|ԁ+|/+|\\+|c+|\|+|>|<|）+|s|S)[\^\'v＾-]?[꞉∶˸։﹕:;;Xx=]<?$')
+	EMOTE_RE1 = re.compile(r'>?[：꞉∶˸։﹕:;;Xx=][\^\'v＾-]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|ԁ+|/+|\\+|F|c+|\|+|>+|<+|）+|s+|S+|0+|o+|O+)$')
+	EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|ԁ+|/+|\\+|c+|\|+|>+|<+|）+|s+|S+|0+|o+|O+)[\^\'v＾-]?[：꞉∶˸։﹕:;;Xx=]<?$')
 	EMOTICONS = [
 		'owo',
 		'OwO',
@@ -34,8 +34,14 @@ class emojiban(znc.Module):
 		'uwu',
 		'<_<',
 		'>_>',
+		'<.<',
+		'>.>',
+		'<w<',
+		'>w>',
 		'T_T',
 		'T.T',
+		'._.',
+		'-_-',
 		'o_o',
 		'O_O',
 		'o_O',
@@ -55,12 +61,17 @@ class emojiban(znc.Module):
 		'^^;',
 		'^_^',
 		'^.^',
+		'^w^',
+		'v_v',
+		'V_V',
+		'v.v',
+		'V.V',
 		':v',
 		'v:',
 		':V',
 		'V:',
 		':\\/',
-		'\\/:'
+		'\\/:',
 	]
 	EXCEPTIONS = [
 		'=>',
@@ -69,12 +80,16 @@ class emojiban(znc.Module):
 		'=<',
 		'xp',
 		'dx',
-		'Xs',
-		'XF',
-		'X>',
-		'<X'
+		'xs',
+		'xf',
 		'x>',
-		'<x'
+		'<x',
+		'0;',
+		'ox',
+		'xo',
+		'ssx',
+		'>x',
+		'ccx',
 	]
 	PREFIX_EXCEPTIONS = [
 		'pokemon'
@@ -116,20 +131,44 @@ class emojiban(znc.Module):
 			noctrl = re.sub(r'\x03([0-9]+(,[0-9]+)?)?', '', message.GetText())
 			noctrl = re.sub(r'[\x00-\x1F]', '', noctrl)
 			pieces = noctrl.split(' ')
+			curidx = -1
+			openPara = False
+			openBracket = False
+
 			for i in range(len(pieces)):
 				piece = pieces[i]
+				lpiece = piece.lower()
+				curidx = curidx + len(piece)
+
 				if not (piece in self.EMOTICONS
 					or self.EMOTE_RE1.match(piece)
 					or self.EMOTE_RE2.match(piece)):
 					continue
 
-				if piece.lower() in self.EXCEPTIONS:
+				if lpiece.lower() in self.EXCEPTIONS:
 					continue
-				if i > 0 and piece.lower() == 'xd' and pieces[i-1].lower() in self.PREFIX_EXCEPTIONS:
+				if i > 0 and lpiece == 'xd' and pieces[i-1].lower() in self.PREFIX_EXCEPTIONS:
+					continue
+
+				if piece.startswith('(') and noctrl.find(')', curidx) > 0:
+					openPara = True
+					continue
+				if piece.startswith('[') and noctrl.find(']', curidx) > 0:
+					openBracket = True
+					continue
+
+				if piece.endswith(')') and openPara:
+					openPara = False
+					continue
+				if piece.endswith(']') and openBracket:
+					openBracket = False
+					continue
+
+				if lpiece.endswith("'s") or lpiece.endswith("'d"):
 					continue
 
 				self.kick(lnick, "No emoticons")
-				self.PutModule("Kicked {0}".format(nick))
+				self.PutModule("Kicked {0} for {1}".format(nick, piece))
 
 				break
 
@@ -171,7 +210,7 @@ class emojiban(znc.Module):
 			if btime < 60:
 				btime = 60
 			
-			timer = self.CreateTimer(bantimer, interval=btime)
+			timer = self.CreateTimer(bantimer, interval=btime, label=user)
 			timer.nick = user
 
 			self.PutIRC("MODE {0} +b {1}!*@*".format(self.RADIO, user))
