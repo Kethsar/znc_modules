@@ -121,6 +121,25 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.PutModule("OnChanTextMessage Exception: " + str(err))
 		
 		return znc.CONTINUE
+
+	# Check for admin commands in messages from #r/a/dio
+	def OnUserTextMessage(self, message):
+		try:
+			chan = str(message.GetChan())
+			zncnick = message.GetNick()
+
+			if chan.lower() == "#r/a/dio":
+				msgTxt = message.GetText()
+				match = re.match("[.!-]", msgTxt)
+
+				if match:
+					msgTxt = re.sub("^[.!-]", "", msgTxt).strip()
+					self.checkForAdminCommand(msgTxt, True)
+			
+		except Exception as err:
+			self.PutModule("OnChanTextMessage Exception: " + str(err))
+		
+		return znc.CONTINUE
 	
 	# De-auth guests if they part from #r/a/dio
 	def OnPartMessage(self, message):
@@ -350,7 +369,7 @@ class hanyuu_guestauth_znc(znc.Module):
 			self.deauth(lnick)
 		
 		self.authObj[lnick] = self.AUTHDICT.copy()
-		self.authObj[lnick]["timer"] = self.CreateTimer(auth_timer, interval=(60 * 60 * 24))
+		self.authObj[lnick]["timer"] = self.CreateTimer(auth_timer, interval=(60 * 60 * 24), label=nick)
 		self.authObj[lnick]["timer"].nick = nick
 		self.authObj[lnick]["nick"] = nick
 		self.PutModule('{0} can use Hanyuu within the next 24 hours'.format(nick))
