@@ -154,7 +154,7 @@ class hanyuu_proxy_znc(znc.Module):
 				self.deauthNick(nick)
 				self.djAuths[nick]["authed"] = True
 
-				timer = self.CreateTimer(auth_timer, interval=(60 * 60 * 24))
+				timer = self.CreateTimer(auth_timer, interval=(60 * 60 * 24), label=nick)
 				timer.nick = nick
 				self.djAuths[nick]["timeout"] = timer
 				self.sendMessage(nick, "You are now authed for the next 24 hours, or until you part from #r/a/dio or disconnect from IRC")
