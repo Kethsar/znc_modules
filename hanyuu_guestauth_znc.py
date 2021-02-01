@@ -106,7 +106,7 @@ class hanyuu_guestauth_znc(znc.Module):
 	# Check for admin commands in messages from #r/a/dio
 	def OnChanTextMessage(self, message):
 		try:
-			chan = str(message.GetChan())
+			chan = message.GetTarget()
 			zncnick = message.GetNick()
 
 			if chan.lower() == "#r/a/dio" and self.isAdmin(zncnick):
@@ -122,10 +122,10 @@ class hanyuu_guestauth_znc(znc.Module):
 		
 		return znc.CONTINUE
 
-	# Check for admin commands in messages from #r/a/dio
+	# Check for admin commands in messages to #r/a/dio from myself
 	def OnUserTextMessage(self, message):
 		try:
-			chan = str(message.GetChan())
+			chan = message.GetTarget()
 			zncnick = message.GetNick()
 
 			if chan.lower() == "#r/a/dio":
@@ -326,7 +326,12 @@ class hanyuu_guestauth_znc(znc.Module):
 	# Attempt to authorize a user to guest stream
 	def setAuth(self, cmd, fromChan = False):
 		match = re.match(r'(?:guestauth|guest|auth)\s+([\S\s]+)', cmd, re.I)
-		radioChan = self.GetNetwork().FindChan(self.RADIO) # We already check if we are in the channel before calling this funtion
+		# We already check if we are in the channel before calling this function
+		chanNicks = self.GetNetwork().FindChan(self.RADIO).GetNicks()
+		lowerNicks = []
+
+		for n in chanNicks:
+			lowerNicks.append(n.lower())
 
 		if match:
 			nicks = match.group(1).split(" ")
@@ -336,14 +341,15 @@ class hanyuu_guestauth_znc(znc.Module):
 
 			for n in nicks:
 				if n:
-					if n.lower() not in self.blacklist:
-						if radioChan.FindNick(n):
-							nstr += n + ", "
-							self.setAllowedNick(n)
-						else:
-							chstr += n + ", "
-					else:
+					nl = n.lower()
+
+					if nl in self.blacklist:
 						blstr += n + ", "
+					elif nl in lowerNicks:
+						nstr += n + ", "
+						self.setAllowedNick(n)
+					else:
+						chstr += n + ", "
 			
 			nstr = nstr.strip(' ,')
 			blstr = blstr.strip(' ,')
