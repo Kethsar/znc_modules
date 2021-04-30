@@ -167,6 +167,10 @@ class emojiban(znc.Module):
 				if lpiece.endswith("'s") or lpiece.endswith("'d"):
 					continue
 
+				# Flam and his dumb 'D: drive'
+				if self.isWinDriveRoot(lpiece) and re.match(r"{0}\s*drive".format(lpiece), noctrl[curidx:], re.I):
+					continue
+
 				self.kick(lnick, "No emoticons")
 				self.PutModule("Kicked {0} for {1}".format(nick, piece))
 
@@ -176,6 +180,15 @@ class emojiban(znc.Module):
 			self.PutModule(str(err))
 
 		return znc.CONTINUE
+
+	def isWinDriveRoot(self, s):
+		if len(s) != 2 or not s.endswith(":"):
+			return False
+
+		if re.match('[a-z]', s):
+			return True
+		
+		return False
 
 	'''
 	def OnModCommand(self, command):
