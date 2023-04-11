@@ -22,17 +22,18 @@ class bantimer(znc.Timer):
 class emojiban(znc.Module):
     description = "Set a timed ban on a user that uses emoji"
     RADIO = '#r/a/dio'
-    EXEMPT = ['edzilla', 'eiki', 'fushi', "kethbot", "kethzilla", "nisezilla"] # bots that are not +o or above
+    EXEMPT = ['edzilla', 'eiki', 'fushi', "kethbot", "kethzilla", "nisezilla", "ireul"] # bots that are not +o or above
 
     # I knew attempting emoticons was a bad idea...
-    EMOTE_RE1 = re.compile(r'>?[：꞉∶˸։﹕:;;Xx=][\^\'v＾-]?(\(+|\)+|D+|\[+|\]+|p+|P+|d+|ԁ+|/+|\\+|F|c+|\|+|>+|<+|）+|s+|S+|0+|o+|O+)$')
-    EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|ԁ+|/+|\\+|c+|C+|\|+|>+|<+|）+|s+|S+|0+|o+|O+)[\^\'v＾-]?[：꞉∶˸։﹕:;;Xx=]<?$')
-    EMOTICONS = [
+    EMOTE_RE1 = re.compile(r'>?[：꞉∶˸։﹕:;;Xxх=][\^\'v＾-]*(\(+|\)+|D+|\[+|\]+|p+|P+|d+|ԁ+|/+|\\+|F|c+|\|+|>+|<+|）+|s+|S+|0+|o+|O+|}+)$')
+    EMOTE_RE2 = re.compile(r'(\(+|\)+|D+|\[+|\]+|q+|d+|ԁ+|/+|\\+|c+|C+|\|+|>+|<+|）+|s+|S+|0+|o+|O+|{+)[\^\'v＾-]*[：꞉∶˸։﹕:;;Xxх=]<?$')
+    BASE_EMOTICONS = [
         'owo',
         'OwO',
         '0w0',
         'UwU',
         'uwu',
+        ';w;',
         '<_<',
         '>_>',
         '<.<',
@@ -41,6 +42,7 @@ class emojiban(znc.Module):
         '>w>',
         'T_T',
         'T.T',
+        'ToT',
         '._.',
         '-_-',
         'o_o',
@@ -56,7 +58,6 @@ class emojiban(znc.Module):
         'O.o',
         'o.0',
         '0.o',
-        '0.0',
         'x_x',
         'X_X',
         'x.x',
@@ -78,7 +79,12 @@ class emojiban(znc.Module):
         ':V',
         ':\\/',
         '\\/:',
+        "n_n",
+        "nwn",
+        "@_@",
+        "n.n",
     ]
+    EMOTICONS = []
     EXCEPTIONS = [
         '=>',
         '<=',
@@ -109,7 +115,7 @@ class emojiban(znc.Module):
             'initial'
         ]
     }
-    PUNCTUATION = """!"'?.,"""
+    PUNCTUATION = '!?.,\'"~'
 
     def OnLoad(self, args, message):
         # https://unicode-table.com/en/blocks/
@@ -124,6 +130,12 @@ class emojiban(znc.Module):
         # 1F170 - 1FFFD: Various meme shit (bold B and other letters in a square thing), actual emoji, and other symbols
         emojistr += r'\U0001F170-\U0001FFFD]'
         self.emoji_re = re.compile(emojistr)
+
+        for emote in self.BASE_EMOTICONS:
+            self.EMOTICONS.append(emote)
+            self.EMOTICONS.append(f"({emote})")
+            self.EMOTICONS.append(f"[{emote}]")
+            self.EMOTICONS.append(f"{{{emote}}}")
 
         return True
     
@@ -151,15 +163,29 @@ class emojiban(znc.Module):
             openPara = False
             openBracket = False
 
+            if lnick == 'ojiisan':
+                if (self.EMOTE_RE1.match(noctrl)
+                    or self.EMOTE_RE2.match(noctrl)):
+                    self.kick(lnick, "No emoticons")
+                    self.PutModule("Kicked {0} for {1}".format(nick, pieces))
+                    return znc.CONTINUE
+                    
+                for e in self.EMOTICONS:
+                    if e in noctrl:
+                        self.kick(lnick, "No emoticons")
+                        self.PutModule("Kicked {0} for {1}".format(nick, e))
+                        return znc.CONTINUE
+
             for i in range(len(pieces)):
-                piece = pieces[i].strip(self.PUNCTUATION)
+                piece = pieces[i]
+
+                if piece in self.EMOTICONS:
+                    self.kick(lnick, "No emoticons")
+                    self.PutModule("Kicked {0} for {1}".format(nick, piece))
+
+                piece = piece.strip(self.PUNCTUATION)
                 lpiece = piece.lower()
                 curidx = curidx + len(piece)
-
-                if not (piece in self.EMOTICONS
-                    or self.EMOTE_RE1.match(piece)
-                    or self.EMOTE_RE2.match(piece)):
-                    continue
 
                 if lpiece.lower() in self.EXCEPTIONS:
                     continue
@@ -173,10 +199,10 @@ class emojiban(znc.Module):
                     openBracket = True
                     continue
 
-                if piece.endswith(')') and openPara:
+                if ')' in piece and openPara:
                     openPara = False
                     continue
-                if piece.endswith(']') and openBracket:
+                if ']' in piece and openBracket:
                     openBracket = False
                     continue
 
@@ -185,6 +211,11 @@ class emojiban(znc.Module):
 
                 # Flam and his dumb 'D: drive'
                 if self.isWinDriveRoot(lpiece) and re.match(r"{0}\s*drive".format(lpiece), noctrl[curidx:], re.I):
+                    continue
+
+                if not (piece in self.EMOTICONS
+                    or self.EMOTE_RE1.match(piece)
+                    or self.EMOTE_RE2.match(piece)):
                     continue
 
                 self.kick(lnick, "No emoticons")
