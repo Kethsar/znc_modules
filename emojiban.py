@@ -83,6 +83,12 @@ class emojiban(znc.Module):
         "nwn",
         "@_@",
         "n.n",
+        "*-*",
+        "*_*",
+        "’_’",
+        "’-’",
+        "+.+",
+        "+_+"
     ]
     EMOTICONS = []
     EXCEPTIONS = [
